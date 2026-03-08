@@ -291,3 +291,5 @@
 2026-03-09 03:19:45 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 168.435 ms - -[0m
 2026-03-09 03:19:45 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 134.234 ms - -[0m
 2026-03-09 03:19:48 [[32minfo[39m]: [0mGET /favicon.ico [33m404[0m 0.479 ms - 37[0m
+2026-03-09 03:32:12 [[32minfo[39m]: MongoDB connected: ac-szm7ktz-shard-00-01.wxgewba.mongodb.net
+2026-03-09 03:32:12 [[32minfo[39m]: 🚀 SocialLogics v2 on :4999
