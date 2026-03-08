@@ -1,55 +1,81 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-const SearchHistory = require('../models/SearchHistory');
-const Bookmark = require('../models/Bookmark');
-const { protect, adminOnly } = require('../middleware/auth');
+/**
+ * backend/models/User.js
+ * Updated to support OAuth (Google, Facebook, Instagram) alongside email/password.
+ */
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
-// GET /api/users/stats - personal stats
-router.get('/stats', protect, async (req, res) => {
-  try {
-    const [totalSearches, totalBookmarks, topPlatforms] = await Promise.all([
-      SearchHistory.countDocuments({ user: req.user._id }),
-      Bookmark.countDocuments({ user: req.user._id }),
-      SearchHistory.aggregate([
-        { $match: { user: req.user._id } },
-        { $group: { _id: '$platform', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 }
-      ])
-    ]);
-    res.json({ totalSearches, totalBookmarks, topPlatforms });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+const userSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 30,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    // Password is optional for OAuth-only accounts (set to random unusable value)
+    password: { type: String, required: true, minlength: 6 },
+    avatar: { type: String, default: "" },
+    bio: { type: String, default: "", maxlength: 300 },
+
+    // OAuth provider IDs — allows linking multiple providers to one account
+    oauth: {
+      google: { id: String },
+      facebook: { id: String },
+      instagram: { id: String },
+    },
+
+    preferredPlatforms: [{ type: String }],
+    theme: {
+      type: String,
+      enum: ["dark", "cyber", "neon", "matrix"],
+      default: "cyber",
+    },
+    safeSearch: { type: Boolean, default: true },
+    defaultSearchMode: { type: String, default: "all" },
+
+    savedSearches: [
+      {
+        query: String,
+        platform: String,
+        label: String,
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    role: { type: String, enum: ["user", "admin"], default: "user" },
+    isActive: { type: Boolean, default: true },
+    lastLogin: { type: Date, default: Date.now },
+    loginStreak: { type: Number, default: 0 },
+    searchCount: { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+
+// Hash password before saving — skip if unchanged
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
 });
 
-// PUT /api/users/saved-searches
-router.post('/saved-searches', protect, async (req, res) => {
-  const { query, platform } = req.body;
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { $push: { savedSearches: { query, platform, createdAt: new Date() } } },
-      { new: true }
-    ).select('-password');
-    res.json({ savedSearches: user.savedSearches });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+userSchema.methods.matchPassword = async function (entered) {
+  return await bcrypt.compare(entered, this.password);
+};
 
-router.delete('/saved-searches/:index', protect, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    user.savedSearches.splice(req.params.index, 1);
-    await user.save();
-    res.json({ savedSearches: user.savedSearches });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+userSchema.methods.toPublic = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
 
-// Admin: GET all users
-router.get('/', protect, adminOnly, async (req, res) => {
-  try {
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
-    res.json({ users });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-module.exports = router;
+module.exports = mongoose.model("User", userSchema);

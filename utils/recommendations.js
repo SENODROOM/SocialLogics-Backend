@@ -1,7 +1,11 @@
 /**
- * recommendations.js
+ * backend/utils/recommendations.js
+ *
  * Fetches real content previews from platforms using public APIs
- * (no API keys required — uses YouTube RSS, Reddit JSON, oEmbed endpoints)
+ * (no API keys — YouTube RSS, Reddit JSON, Dailymotion API, Vimeo RSS)
+ *
+ * Supports `page` param: each page uses a varied query so results are
+ * always fresh and different — enabling true infinite scroll.
  */
 const axios = require("axios");
 
@@ -13,7 +17,7 @@ const http = axios.create({
   },
 });
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const safeGet = async (url, opts = {}) => {
   try {
@@ -24,7 +28,7 @@ const safeGet = async (url, opts = {}) => {
   }
 };
 
-const parseXmlItems = (xml, count = 8) => {
+const parseXmlItems = (xml, count = 15) => {
   if (!xml || typeof xml !== "string") return [];
   const items = [];
   const itemRegex = /<entry>([\s\S]*?)<\/entry>|<item>([\s\S]*?)<\/item>/g;
@@ -63,12 +67,43 @@ const fmtNum = (n) => {
   return num.toString();
 };
 
-// ── YouTube ───────────────────────────────────────────────────────────────────
-// Uses YouTube search RSS (no API key) + Data API v3 thumbnail URLs
+/**
+ * Generate query variations for a given page number.
+ * Page 1 = base query, subsequent pages add modifiers so APIs
+ * return different result sets — this is how we fake infinite scroll
+ * against APIs that don't support cursor/offset pagination.
+ */
+const getPageQuery = (baseQuery, page) => {
+  const modifiers = [
+    "", // page 1 — original
+    "best",
+    "top",
+    "2024",
+    "2025",
+    "trending",
+    "viral",
+    "popular",
+    "new",
+    "latest",
+    "compilation",
+    "highlights",
+    "explained",
+    "reaction",
+    "review",
+    "tutorial",
+    "full",
+    "official",
+    "live",
+    "behind the scenes",
+  ];
+  const mod = modifiers[(page - 1) % modifiers.length] || page.toString();
+  return mod ? `${baseQuery} ${mod}`.trim() : baseQuery;
+};
 
-const fetchYouTube = async (query, limit = 8) => {
+// ── YouTube ───────────────────────────────────────────────────────────────────
+
+const fetchYouTube = async (query, limit = 15) => {
   try {
-    // YouTube search RSS feed (public, no API key)
     const feedUrl = `https://www.youtube.com/feeds/videos.xml?search_query=${encodeURIComponent(query)}`;
     const xml = await safeGet(feedUrl, {
       responseType: "text",
@@ -120,20 +155,18 @@ const fetchYouTube = async (query, limit = 8) => {
 };
 
 // ── Reddit ────────────────────────────────────────────────────────────────────
-// Public Reddit JSON API (no auth, no key)
 
-const fetchReddit = async (query, limit = 8) => {
+const fetchReddit = async (query, limit = 15, after = "") => {
   try {
-    const data = await safeGet(
-      `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=link&sort=relevance&limit=${limit * 2}`,
-      { headers: { Accept: "application/json" } },
-    );
+    const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=link&sort=relevance&limit=${limit * 2}${after ? `&after=${after}` : ""}`;
+    const data = await safeGet(url, {
+      headers: { Accept: "application/json" },
+    });
     if (!data?.data?.children) return [];
 
     return data.data.children
       .filter((c) => {
         const p = c.data;
-        // Only include posts with video/image previews
         return (
           p.is_video ||
           p.preview?.images?.length > 0 ||
@@ -150,8 +183,6 @@ const fetchReddit = async (query, limit = 8) => {
           ) ||
           p.preview?.images?.[0]?.source?.url?.replace(/&amp;/g, "&") ||
           (p.thumbnail?.startsWith("http") ? p.thumbnail : null);
-
-        // Reddit video embed
         const redditVideoUrl =
           p.media?.reddit_video?.fallback_url ||
           p.secure_media?.reddit_video?.fallback_url;
@@ -180,10 +211,10 @@ const fetchReddit = async (query, limit = 8) => {
   }
 };
 
-// ── Vimeo oEmbed ──────────────────────────────────────────────────────────────
-const fetchVimeo = async (query, limit = 6) => {
+// ── Vimeo ─────────────────────────────────────────────────────────────────────
+
+const fetchVimeo = async (query, limit = 10) => {
   try {
-    // Vimeo public search RSS
     const xml = await safeGet(
       `https://vimeo.com/search?q=${encodeURIComponent(query)}&format=rss`,
       { responseType: "text" },
@@ -199,7 +230,6 @@ const fetchVimeo = async (query, limit = 6) => {
           extractAttr(item, "media:thumbnail", "url") ||
           extractAttr(item, "enclosure", "url");
         const videoId = link?.match(/vimeo\.com\/(\d+)/)?.[1];
-
         if (!videoId || !title) return null;
 
         return {
@@ -223,10 +253,11 @@ const fetchVimeo = async (query, limit = 6) => {
 };
 
 // ── Dailymotion ───────────────────────────────────────────────────────────────
-const fetchDailymotion = async (query, limit = 6) => {
+
+const fetchDailymotion = async (query, limit = 10, page = 1) => {
   try {
     const data = await safeGet(
-      `https://api.dailymotion.com/videos?search=${encodeURIComponent(query)}&limit=${limit}&fields=id,title,thumbnail_240_url,url,created_time,views_total,owner.screenname`,
+      `https://api.dailymotion.com/videos?search=${encodeURIComponent(query)}&limit=${limit}&page=${page}&fields=id,title,thumbnail_240_url,url,created_time,views_total,owner.screenname`,
     );
     if (!data?.list) return [];
 
@@ -249,31 +280,27 @@ const fetchDailymotion = async (query, limit = 6) => {
   }
 };
 
-// ── Twitch clips (public) ─────────────────────────────────────────────────────
-// Twitch public embed (no auth for embed, only clip preview available without API key)
-const generateTwitchItems = (query, limit = 4) => {
-  // Synthetic — Twitch requires API key for search. Provide search links as cards.
-  return [
-    {
-      id: `tw_search_${Date.now()}`,
-      platform: "twitch",
-      type: "live",
-      title: `Search "${query}" on Twitch`,
-      author: "Twitch",
-      thumbnail: null,
-      url: `https://www.twitch.tv/search?term=${encodeURIComponent(query)}`,
-      embedUrl: null,
-      timeAgo: "Live now",
-      previewable: false,
-      isSearchCard: true,
-    },
-  ];
-};
+// ── Twitch / TikTok / Instagram (no public API — static search cards) ─────────
 
-// ── TikTok (no public API without auth — provide search deep link) ────────────
+const generateTwitchItems = (query) => [
+  {
+    id: `tw_search_${query.replace(/\s+/g, "_")}`,
+    platform: "twitch",
+    type: "live",
+    title: `Search "${query}" on Twitch`,
+    author: "Twitch",
+    thumbnail: null,
+    url: `https://www.twitch.tv/search?term=${encodeURIComponent(query)}`,
+    embedUrl: null,
+    timeAgo: "Live now",
+    previewable: false,
+    isSearchCard: true,
+  },
+];
+
 const generateTikTokItems = (query) => [
   {
-    id: `tt_search_${Date.now()}`,
+    id: `tt_search_${query.replace(/\s+/g, "_")}`,
     platform: "tiktok",
     type: "short",
     title: `Trending "${query}" on TikTok`,
@@ -287,10 +314,9 @@ const generateTikTokItems = (query) => [
   },
 ];
 
-// ── Instagram (no public search API) ─────────────────────────────────────────
 const generateInstagramItems = (query) => [
   {
-    id: `ig_search_${Date.now()}`,
+    id: `ig_search_${query.replace(/\s+/g, "_")}`,
     platform: "instagram",
     type: "reel",
     title: `Explore #${query.replace(/\s+/g, "")} on Instagram`,
@@ -306,39 +332,64 @@ const generateInstagramItems = (query) => [
 
 // ── Master fetcher ────────────────────────────────────────────────────────────
 
-const PLATFORM_MAP = {
-  youtube: fetchYouTube,
-  reddit: fetchReddit,
-  vimeo: fetchVimeo,
-  dailymotion: fetchDailymotion,
-  twitch: (q) => generateTwitchItems(q),
-  tiktok: (q) => generateTikTokItems(q),
-  instagram: (q) => generateInstagramItems(q),
-};
-
 /**
- * Fetch recommendations for a query across specified platforms.
- * @param {string} query
- * @param {string|string[]} platforms - 'all' or array of platform IDs
- * @param {number} limitPerPlatform
+ * Fetch recommendations for a query across platforms.
+ *
+ * @param {string}          query
+ * @param {string|string[]} platforms        - 'all' or array of platform IDs
+ * @param {number}          limitPerPlatform - items per platform (default 12)
+ * @param {number}          page             - page number for infinite scroll (default 1)
+ *
+ * Each page uses a varied query so the APIs return different result sets.
+ * Dailymotion supports real page params natively.
+ * YouTube/Reddit/Vimeo get query modifiers per page.
  */
 const fetchRecommendations = async (
   query,
   platforms = "all",
-  limitPerPlatform = 8,
+  limitPerPlatform = 12,
+  page = 1,
 ) => {
+  const ALL_PLATFORMS = [
+    "youtube",
+    "reddit",
+    "vimeo",
+    "dailymotion",
+    "twitch",
+    "tiktok",
+    "instagram",
+  ];
+
   const targets =
     platforms === "all"
-      ? Object.keys(PLATFORM_MAP)
-      : (Array.isArray(platforms) ? platforms : [platforms]).filter(
-          (p) => PLATFORM_MAP[p],
+      ? ALL_PLATFORMS
+      : (Array.isArray(platforms) ? platforms : [platforms]).filter((p) =>
+          ALL_PLATFORMS.includes(p),
         );
+
+  // Build a varied query for this page so APIs return fresh results
+  const pagedQuery = getPageQuery(query, page);
 
   const results = await Promise.allSettled(
     targets.map(async (pid) => {
-      const fn = PLATFORM_MAP[pid];
-      const items = await fn(query, limitPerPlatform);
-      return { platform: pid, items: items || [] };
+      let items = [];
+
+      if (pid === "youtube")
+        items = await fetchYouTube(pagedQuery, limitPerPlatform);
+      else if (pid === "reddit")
+        items = await fetchReddit(pagedQuery, limitPerPlatform);
+      else if (pid === "vimeo")
+        items = await fetchVimeo(pagedQuery, limitPerPlatform);
+      else if (pid === "dailymotion")
+        items = await fetchDailymotion(pagedQuery, limitPerPlatform, page);
+      else if (pid === "twitch") items = generateTwitchItems(pagedQuery);
+      else if (pid === "tiktok") items = generateTikTokItems(pagedQuery);
+      else if (pid === "instagram") items = generateInstagramItems(pagedQuery);
+
+      // Stamp items with page so frontend can dedupe across pages
+      items = items.map((item) => ({ ...item, _page: page }));
+
+      return { platform: pid, items };
     }),
   );
 
