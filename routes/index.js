@@ -51,22 +51,18 @@ router.post(
     const { username, email, password } = req.body;
     const exists = await User.findOne({ $or: [{ email }, { username }] });
     if (exists)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error:
-            exists.email === email
-              ? "Email already registered"
-              : "Username taken",
-        });
-    const user = await User.create({ username, email, password });
-    res
-      .status(201)
-      .json({
-        success: true,
-        data: { token: genToken(user._id), user: user.toPublic() },
+      return res.status(400).json({
+        success: false,
+        error:
+          exists.email === email
+            ? "Email already registered"
+            : "Username taken",
       });
+    const user = await User.create({ username, email, password });
+    res.status(201).json({
+      success: true,
+      data: { token: genToken(user._id), user: user.toPublic() },
+    });
   }),
 );
 
@@ -538,6 +534,197 @@ router.get(
         .select("displayQuery count score"),
     ]);
     res.json({ success: true, data: { users, searches, bookmarks, trending } });
+  }),
+);
+
+// ══════════════════════════════════════════════════
+// SHORTS FEED  (no auth needed — public)
+// ══════════════════════════════════════════════════
+/**
+ * GET /api/shorts/feed?page=1&cat=Music&limit=15
+ *
+ * Returns an array of YouTube video IDs suitable for embedding in ShortsVerse.
+ * Uses YouTube RSS feeds (no API key required) with rotating search queries
+ * so every page returns a genuinely different set of videos.
+ *
+ * Response: { success: true, videos: [ { ytId, title, creator, cat } ], page, hasMore }
+ */
+const axios = require("axios");
+
+const SHORTS_QUERIES = {
+  "For You": [
+    "viral shorts 2025",
+    "trending short videos",
+    "funny moments shorts",
+    "satisfying videos short",
+    "amazing clips 2025",
+  ],
+  Trending: [
+    "trending now 2025",
+    "viral today",
+    "hot right now shorts",
+    "what everyone watching",
+    "breaking trending shorts",
+  ],
+  Music: [
+    "music shorts 2025",
+    "new song short",
+    "viral music clip",
+    "official music short",
+    "pop music trending shorts",
+  ],
+  Dance: [
+    "dance shorts viral",
+    "trending dance 2025",
+    "dance challenge short",
+    "best dance clips",
+    "viral choreography short",
+  ],
+  Comedy: [
+    "funny short 2025",
+    "comedy clips viral",
+    "hilarious moments short",
+    "stand up clips short",
+    "funny fails 2025",
+  ],
+  Food: [
+    "food shorts viral",
+    "cooking shorts 2025",
+    "recipe short video",
+    "street food short",
+    "satisfying food clips",
+  ],
+  Sports: [
+    "sports shorts viral",
+    "amazing sports moments",
+    "highlights short clip",
+    "extreme sports shorts",
+    "best plays short",
+  ],
+  Travel: [
+    "travel shorts 2025",
+    "places to visit short",
+    "beautiful destinations shorts",
+    "travel vlog short",
+    "hidden gems travel",
+  ],
+  Art: [
+    "art shorts viral",
+    "drawing short video",
+    "satisfying art clips",
+    "creative shorts 2025",
+    "amazing art timelapse",
+  ],
+  Fitness: [
+    "workout shorts 2025",
+    "fitness tips short",
+    "exercise clips viral",
+    "gym shorts motivation",
+    "health tips short video",
+  ],
+};
+
+const SHORTS_HTTP = axios.create({
+  timeout: 8000,
+  headers: {
+    "User-Agent": "SocialLogics/2.0",
+    Accept: "text/xml,application/xml",
+  },
+});
+
+const parseYtRss = (xml, limit) => {
+  if (!xml || typeof xml !== "string") return [];
+  const results = [];
+  const entryRx = /<entry>([\s\S]*?)<\/entry>/g;
+  let m;
+  while ((m = entryRx.exec(xml)) !== null && results.length < limit) {
+    const entry = m[1];
+    // video id
+    const idMatch =
+      entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) ||
+      entry.match(/<id>[^<]*:video:([^<]+)<\/id>/);
+    const titleMatch = entry.match(
+      /<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/,
+    );
+    const authorMatch = entry.match(/<name>([\s\S]*?)<\/name>/);
+    if (!idMatch || !titleMatch) continue;
+    results.push({
+      ytId: idMatch[1].trim(),
+      title: titleMatch[1]
+        .replace(/<!\[CDATA\[|\]\]>/g, "")
+        .trim()
+        .substring(0, 80),
+      creator: authorMatch
+        ? "@" +
+          authorMatch[1]
+            .replace(/<!\[CDATA\[|\]\]>/g, "")
+            .trim()
+            .replace(/\s+/g, "")
+        : "@creator",
+    });
+  }
+  return results;
+};
+
+router.get(
+  "/shorts/feed",
+  asyncHandler(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const cat = req.query.cat || "For You";
+    const limit = Math.min(20, parseInt(req.query.limit) || 15);
+
+    const queryPool = SHORTS_QUERIES[cat] || SHORTS_QUERIES["For You"];
+    // Rotate through queries based on page so every page is different
+    const query = queryPool[(page - 1) % queryPool.length];
+    const pageModifiers = [
+      "",
+      "part 2",
+      "compilation",
+      "2025",
+      "new",
+      "best of",
+      "top",
+      "viral",
+      "funny",
+      "amazing",
+    ];
+    const mod =
+      pageModifiers[
+        Math.floor((page - 1) / queryPool.length) % pageModifiers.length
+      ];
+    const finalQuery = mod ? `${query} ${mod}` : query;
+
+    try {
+      const url = `https://www.youtube.com/feeds/videos.xml?search_query=${encodeURIComponent(finalQuery)}`;
+      const { data: xml } = await SHORTS_HTTP.get(url, {
+        responseType: "text",
+      });
+      const raw = parseYtRss(xml, limit * 2); // fetch more, deduplicate below
+
+      // Deduplicate by ytId
+      const seen = new Set();
+      const videos = raw
+        .filter((v) => {
+          if (seen.has(v.ytId)) return false;
+          seen.add(v.ytId);
+          return true;
+        })
+        .slice(0, limit)
+        .map((v) => ({ ...v, cat }));
+
+      return res.json({
+        success: true,
+        videos,
+        page,
+        hasMore: videos.length >= limit,
+      });
+    } catch (err) {
+      return res.status(502).json({
+        success: false,
+        error: "Failed to fetch shorts feed",
+        details: err.message,
+      });
+    }
   }),
 );
 
