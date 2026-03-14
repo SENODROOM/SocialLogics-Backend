@@ -4270,3 +4270,93 @@
 2026-03-09 08:16:51 [[32minfo[39m]: [0mGET /shorts/feed?page=1&cat=For%20You&limit=20 [33m404[0m 0.419 ms - 37[0m
 2026-03-09 08:16:51 [[32minfo[39m]: [0mGET /shorts/feed?page=1&cat=For%20You&limit=20 [33m404[0m 0.359 ms - 37[0m
 2026-03-09 08:19:45 [[32minfo[39m]: [0mGET /favicon.ico [33m404[0m 0.428 ms - 37[0m
+2026-03-09 08:26:41 [[32minfo[39m]: MongoDB connected: ac-szm7ktz-shard-00-00.wxgewba.mongodb.net
+2026-03-09 08:26:41 [[32minfo[39m]: 🚀 SocialLogics v2 on :4999
+2026-03-09 08:26:50 [[32minfo[39m]: [0mGET /main.de3d74264ffc5ca95cb3.hot-update.json [33m404[0m 8.672 ms - 37[0m
+2026-03-09 08:26:51 [[32minfo[39m]: [0mGET /favicon.ico [33m404[0m 2.009 ms - 37[0m
+2026-03-09 08:26:51 [[32minfo[39m]: [0mGET /api/search/stats [32m200[0m 209.938 ms - 97[0m
+2026-03-09 08:26:51 [[32minfo[39m]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 236.999 ms - -[0m
+2026-03-09 08:26:51 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 166.658 ms - -[0m
+2026-03-09 08:26:52 [[32minfo[39m]: [0mGET /api/search/stats [36m304[0m 9.630 ms - -[0m
+2026-03-09 08:26:52 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 187.362 ms - -[0m
+2026-03-09 08:26:52 [[32minfo[39m]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 12.930 ms - -[0m
+2026-03-09 08:26:53 [[32minfo[39m]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 1937.596 ms - -[0m
+2026-03-09 08:29:02 [[32minfo[39m]: [0mGET /favicon.ico [33m404[0m 0.822 ms - 37[0m
+2026-03-09 08:33:53 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 120.659 ms - -[0m
+2026-03-09 08:33:53 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 115.981 ms - -[0m
+2026-03-09 08:34:06 [[32minfo[39m]: [0mGET /favicon.ico [33m404[0m 0.469 ms - 37[0m
+2026-03-09 08:37:40 [[32minfo[39m]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 192.217 ms - -[0m
+2026-03-09 08:37:40 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 135.446 ms - -[0m
+2026-03-09 08:37:40 [[32minfo[39m]: [0mGET /api/search/stats [36m304[0m 155.862 ms - -[0m
+2026-03-09 08:37:40 [[32minfo[39m]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 2.109 ms - -[0m
+2026-03-09 08:37:40 [[32minfo[39m]: [0mGET /api/search/stats [36m304[0m 1.550 ms - -[0m
+2026-03-09 08:37:40 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 194.353 ms - -[0m
+2026-03-09 08:37:41 [[32minfo[39m]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 1675.185 ms - -[0m
+2026-03-09 09:12:45 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 151.844 ms - -[0m
+2026-03-09 09:12:45 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 129.815 ms - -[0m
+2026-03-09 09:12:53 [[32minfo[39m]: [0mGET /favicon.ico [33m404[0m 0.891 ms - 37[0m
+2026-03-09 09:38:46 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 166.088 ms - -[0m
+2026-03-09 09:38:46 [[32minfo[39m]: [0mGET /api/auth/me [36m304[0m 128.543 ms - -[0m
+2026-03-09 09:39:05 [[32minfo[39m]: [0mGET /favicon.ico [33m404[0m 0.412 ms - 37[0m
+2026-03-13 02:06:39 [info]: MongoDB connected: ac-szm7ktz-shard-00-01.wxgewba.mongodb.net
+2026-03-13 02:06:39 [info]: 🚀 SocialLogics v2 on :4999
+2026-03-13 02:07:43 [info]: [0mGET /api/search/stats [32m200[0m 169.622 ms - 97[0m
+2026-03-13 02:07:43 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 178.752 ms - -[0m
+2026-03-13 02:07:43 [info]: [0mGET /favicon.ico [33m404[0m 0.796 ms - 37[0m
+2026-03-13 02:07:44 [info]: [0mGET /api/search/stats [36m304[0m 0.850 ms - -[0m
+2026-03-13 02:07:44 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 0.957 ms - -[0m
+2026-03-13 02:07:45 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 2021.099 ms - -[0m
+2026-03-13 02:07:50 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 1.155 ms - -[0m
+2026-03-13 02:07:50 [info]: [0mGET /api/search/stats [32m200[0m 1.074 ms - 97[0m
+2026-03-13 02:07:50 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 1.066 ms - -[0m
+2026-03-13 02:07:50 [info]: [0mGET /api/search/stats [36m304[0m 0.785 ms - -[0m
+2026-03-13 02:07:50 [info]: [0mGET /api/search/trending?limit=20&period=daily [36m304[0m 3.776 ms - -[0m
+2026-03-13 02:08:13 [info]: [0mGET /favicon.ico [33m404[0m 0.588 ms - 37[0m
+2026-03-13 02:22:17 [info]: MongoDB connected: ac-szm7ktz-shard-00-02.wxgewba.mongodb.net
+2026-03-13 02:22:17 [info]: 🚀 SocialLogics v2 on :4999
+2026-03-13 02:23:56 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 162.394 ms - -[0m
+2026-03-13 02:23:56 [info]: [0mGET /api/search/stats [32m200[0m 120.053 ms - 97[0m
+2026-03-13 02:23:56 [info]: [0mGET /api/auth/me [32m200[0m 120.832 ms - 450[0m
+2026-03-13 02:23:56 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 1.117 ms - -[0m
+2026-03-13 02:23:56 [info]: [0mGET /api/search/stats [36m304[0m 0.853 ms - -[0m
+2026-03-13 02:23:56 [info]: [0mGET /api/auth/me [36m304[0m 120.476 ms - -[0m
+2026-03-13 02:23:57 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 1861.910 ms - -[0m
+2026-03-14 01:58:53 [info]: MongoDB connected: ac-szm7ktz-shard-00-00.wxgewba.mongodb.net
+2026-03-14 01:58:53 [info]: 🚀 SocialLogics v2 on :4999
+2026-03-14 02:00:57 [info]: [0mGET /api/search/stats [32m200[0m 162.446 ms - 97[0m
+2026-03-14 02:00:57 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 154.607 ms - -[0m
+2026-03-14 02:00:58 [info]: [0mGET /api/search/stats [36m304[0m 1.389 ms - -[0m
+2026-03-14 02:00:58 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 0.675 ms - -[0m
+2026-03-14 02:00:58 [info]: [0mGET /favicon.ico [33m404[0m 1.343 ms - 37[0m
+2026-03-14 02:00:59 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 2215.428 ms - -[0m
+2026-03-14 02:01:10 [info]: MongoDB connected: ac-szm7ktz-shard-00-01.wxgewba.mongodb.net
+2026-03-14 02:01:10 [info]: 🚀 SocialLogics v2 on :4999
+2026-03-14 02:01:51 [info]: [0mGET /favicon.ico [33m404[0m 3.306 ms - 37[0m
+2026-03-14 02:52:54 [info]: [0mGET /favicon.ico [33m404[0m 4.645 ms - 37[0m
+2026-03-14 02:56:25 [info]: [0mGET /favicon.ico [33m404[0m 0.903 ms - 37[0m
+2026-03-14 02:57:20 [info]: [0mGET /api/search/stats [36m304[0m 172.093 ms - -[0m
+2026-03-14 02:57:20 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 210.821 ms - -[0m
+2026-03-14 02:57:20 [info]: [0mGET /api/search/stats [36m304[0m 3.073 ms - -[0m
+2026-03-14 02:57:20 [info]: [0mGET /api/search/trending?limit=20&period=daily [32m200[0m 1.528 ms - -[0m
+2026-03-14 02:57:21 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 1754.704 ms - -[0m
+2026-03-14 02:57:25 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=2 [32m200[0m 1206.828 ms - -[0m
+2026-03-14 02:57:27 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=3 [32m200[0m 1177.175 ms - -[0m
+2026-03-14 02:57:30 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=4 [32m200[0m 1124.620 ms - -[0m
+2026-03-14 02:57:32 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=5 [32m200[0m 1126.397 ms - -[0m
+2026-03-14 02:57:33 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=6 [32m200[0m 1221.934 ms - -[0m
+2026-03-14 02:57:35 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=7 [32m200[0m 1125.107 ms - -[0m
+2026-03-14 02:57:43 [info]: [0mGET /api/search/suggestions?q=hello&limit=10 [32m200[0m 130.553 ms - 102[0m
+2026-03-14 02:57:45 [info]: [0mPOST /api/search [32m200[0m 144.263 ms - -[0m
+2026-03-14 02:57:45 [info]: [0mPOST /api/search [32m200[0m 128.144 ms - -[0m
+2026-03-14 02:57:45 [info]: [0mPOST /api/search [32m200[0m 148.325 ms - -[0m
+2026-03-14 02:57:47 [info]: [0mGET /api/recommendations?q=hello&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 1908.772 ms - -[0m
+2026-03-14 02:57:55 [info]: [0mGET /api/recommendations?q=hello&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=2 [32m200[0m 2256.042 ms - -[0m
+2026-03-14 02:57:56 [info]: [0mGET /api/recommendations?q=hello&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=3 [32m200[0m 990.887 ms - -[0m
+2026-03-14 02:57:59 [info]: [0mGET /api/recommendations?q=hello&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=4 [32m200[0m 1034.758 ms - -[0m
+2026-03-14 02:58:00 [info]: [0mGET /api/recommendations?q=hello&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=5 [32m200[0m 1059.802 ms - -[0m
+2026-03-14 02:58:03 [info]: [0mGET /api/recommendations?q=hello&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=6 [32m200[0m 1484.347 ms - -[0m
+2026-03-14 02:58:08 [info]: [0mGET /api/recommendations?q=trending+viral+2025&platform=youtube%2Creddit%2Cdailymotion%2Cvimeo&limit=12&page=1 [32m200[0m 2.711 ms - -[0m
+2026-03-14 02:58:08 [info]: [0mGET /api/search/trending?limit=20&period=daily [36m304[0m 1.106 ms - -[0m
+2026-03-14 02:58:08 [info]: [0mGET /api/search/stats [36m304[0m 0.714 ms - -[0m
+2026-03-14 02:58:09 [info]: [0mGET /api/search/trending?limit=20&period=daily [36m304[0m 2.388 ms - -[0m
+2026-03-14 02:58:09 [info]: [0mGET /api/search/stats [36m304[0m 0.617 ms - -[0m

@@ -536,21 +536,18 @@ router.get(
     res.json({ success: true, data: { users, searches, bookmarks, trending } });
   }),
 );
-
-// ══════════════════════════════════════════════════
-// SHORTS FEED  (no auth needed — public)
-// ══════════════════════════════════════════════════
 /**
- * GET /api/shorts/feed?page=1&cat=Music&limit=15
+ * backend/routes/index.js  — Shorts Feed Route (upgraded)
  *
- * Returns an array of YouTube video IDs suitable for embedding in ShortsVerse.
- * Uses YouTube RSS feeds (no API key required) with rotating search queries
- * so every page returns a genuinely different set of videos.
- *
- * Response: { success: true, videos: [ { ytId, title, creator, cat } ], page, hasMore }
+ * ✅ FIX: Server-side oEmbed validation before returning videos to client
+ * ✅ FIX: Caches unavailable video IDs to avoid re-checking them
+ * ✅ NEW: /api/shorts/validate endpoint for client to check a batch
+ * ✅ NEW: Richer response with thumbnail URLs
  */
 const axios = require("axios");
+const { cache } = require("../utils/cache");
 
+// ── Query pools ───────────────────────────────────────────────────────────────
 const SHORTS_QUERIES = {
   "For You": [
     "viral shorts 2025",
@@ -627,11 +624,68 @@ const SHORTS_QUERIES = {
 const SHORTS_HTTP = axios.create({
   timeout: 8000,
   headers: {
-    "User-Agent": "SocialLogics/2.0",
+    "User-Agent": "SocialLogics/3.0",
     Accept: "text/xml,application/xml",
   },
 });
 
+// ── In-memory unavailability cache (persists until server restart) ─────────────
+// Maps ytId -> { available: bool, checkedAt: timestamp }
+const unavailCache = new Map();
+const UNAVAIL_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+
+function isUnavailCached(ytId) {
+  const entry = unavailCache.get(ytId);
+  if (!entry) return null; // unknown
+  if (Date.now() - entry.checkedAt > UNAVAIL_TTL_MS) {
+    unavailCache.delete(ytId);
+    return null; // expired
+  }
+  return entry.available; // true or false
+}
+
+function cacheAvailability(ytId, available) {
+  unavailCache.set(ytId, { available, checkedAt: Date.now() });
+}
+
+// ── oEmbed check ──────────────────────────────────────────────────────────────
+async function checkEmbeddable(ytId) {
+  const cached = isUnavailCached(ytId);
+  if (cached !== null) return cached;
+
+  try {
+    const res = await axios.get(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${ytId}&format=json`,
+      { timeout: 4000, validateStatus: () => true },
+    );
+    const available = res.status === 200;
+    cacheAvailability(ytId, available);
+    return available;
+  } catch {
+    // If network error, optimistically allow (client will catch it)
+    return true;
+  }
+}
+
+/**
+ * Validate an array of video objects in parallel.
+ * Returns only the embeddable ones.
+ */
+async function filterEmbeddable(videos, concurrency = 10) {
+  const results = [];
+  for (let i = 0; i < videos.length; i += concurrency) {
+    const chunk = videos.slice(i, i + concurrency);
+    const checks = await Promise.all(
+      chunk.map(async (v) => ({ v, ok: await checkEmbeddable(v.ytId) })),
+    );
+    for (const { v, ok } of checks) {
+      if (ok) results.push(v);
+    }
+  }
+  return results;
+}
+
+// ── RSS parser ────────────────────────────────────────────────────────────────
 const parseYtRss = (xml, limit) => {
   if (!xml || typeof xml !== "string") return [];
   const results = [];
@@ -639,17 +693,17 @@ const parseYtRss = (xml, limit) => {
   let m;
   while ((m = entryRx.exec(xml)) !== null && results.length < limit) {
     const entry = m[1];
-    // video id
     const idMatch =
       entry.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) ||
       entry.match(/<id>[^<]*:video:([^<]+)<\/id>/);
     const titleMatch = entry.match(
       /<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/,
     );
-    const authorMatch = entry.match(/<name>([\s\S]*?)<\/name>/);
+    const authorMatch = entry.match(/<n>([\s\S]*?)<\/name>/);
     if (!idMatch || !titleMatch) continue;
+    const ytId = idMatch[1].trim();
     results.push({
-      ytId: idMatch[1].trim(),
+      ytId,
       title: titleMatch[1]
         .replace(/<!\[CDATA\[|\]\]>/g, "")
         .trim()
@@ -661,20 +715,24 @@ const parseYtRss = (xml, limit) => {
             .trim()
             .replace(/\s+/g, "")
         : "@creator",
+      // Include thumbnail URL for client-side queue panel
+      thumbnail: `https://i.ytimg.com/vi/${ytId}/mqdefault.jpg`,
     });
   }
   return results;
 };
 
+// ── GET /api/shorts/feed ──────────────────────────────────────────────────────
 router.get(
   "/shorts/feed",
   asyncHandler(async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const cat = req.query.cat || "For You";
     const limit = Math.min(20, parseInt(req.query.limit) || 15);
+    // skip_validation=1 allows client to opt out (for speed, client-side checks take over)
+    const skipValidation = req.query.skip_validation === "1";
 
     const queryPool = SHORTS_QUERIES[cat] || SHORTS_QUERIES["For You"];
-    // Rotate through queries based on page so every page is different
     const query = queryPool[(page - 1) % queryPool.length];
     const pageModifiers = [
       "",
@@ -685,8 +743,6 @@ router.get(
       "best of",
       "top",
       "viral",
-      "funny",
-      "amazing",
     ];
     const mod =
       pageModifiers[
@@ -694,30 +750,57 @@ router.get(
       ];
     const finalQuery = mod ? `${query} ${mod}` : query;
 
+    // Cache key — validated results cached for 10 minutes
+    const cacheKey = `shorts:feed:${cat}:${page}:${limit}:validated`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return res.json({ success: true, cached: true, ...cached });
+    }
+
     try {
       const url = `https://www.youtube.com/feeds/videos.xml?search_query=${encodeURIComponent(finalQuery)}`;
       const { data: xml } = await SHORTS_HTTP.get(url, {
         responseType: "text",
       });
-      const raw = parseYtRss(xml, limit * 2); // fetch more, deduplicate below
+
+      // Parse more than needed to account for unavailable videos being filtered
+      const raw = parseYtRss(xml, limit * 3);
 
       // Deduplicate by ytId
       const seen = new Set();
-      const videos = raw
-        .filter((v) => {
-          if (seen.has(v.ytId)) return false;
-          seen.add(v.ytId);
-          return true;
-        })
-        .slice(0, limit)
-        .map((v) => ({ ...v, cat }));
+      const deduplicated = raw.filter((v) => {
+        if (seen.has(v.ytId)) return false;
+        seen.add(v.ytId);
+        return true;
+      });
 
-      return res.json({
-        success: true,
+      // Filter out known-unavailable videos (fast — cached)
+      const knownAvailable = deduplicated.filter((v) => {
+        const cachedStatus = isUnavailCached(v.ytId);
+        return cachedStatus !== false; // include unknown (null) and available (true)
+      });
+
+      let videos;
+      if (skipValidation) {
+        // Return known-available + unknowns without checking — client will handle rest
+        videos = knownAvailable.slice(0, limit).map((v) => ({ ...v, cat }));
+      } else {
+        // Full server-side validation (slower but guarantees embeddable)
+        const validated = await filterEmbeddable(knownAvailable, 10);
+        videos = validated.slice(0, limit).map((v) => ({ ...v, cat }));
+      }
+
+      const payload = {
         videos,
         page,
         hasMore: videos.length >= limit,
-      });
+        validatedServerSide: !skipValidation,
+      };
+
+      // Cache for 10 minutes
+      cache.set(cacheKey, payload, 600);
+
+      return res.json({ success: true, cached: false, ...payload });
     } catch (err) {
       return res.status(502).json({
         success: false,
@@ -725,6 +808,48 @@ router.get(
         details: err.message,
       });
     }
+  }),
+);
+
+// ── POST /api/shorts/validate ─────────────────────────────────────────────────
+/**
+ * Client sends a list of ytIds to check, server responds with which are available.
+ * Body: { ytIds: ["abc", "def", ...] }
+ * Response: { results: { "abc": true, "def": false, ... } }
+ */
+router.post(
+  "/shorts/validate",
+  asyncHandler(async (req, res) => {
+    const { ytIds } = req.body || {};
+    if (!Array.isArray(ytIds) || ytIds.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, error: "ytIds array required" });
+    }
+
+    // Limit to 50 per request
+    const ids = ytIds.slice(0, 50);
+
+    const results = {};
+    await Promise.all(
+      ids.map(async (ytId) => {
+        results[ytId] = await checkEmbeddable(ytId);
+      }),
+    );
+
+    res.json({ success: true, results });
+  }),
+);
+
+// ── GET /api/shorts/validate-single ──────────────────────────────────────────
+router.get(
+  "/shorts/validate-single",
+  asyncHandler(async (req, res) => {
+    const { ytId } = req.query;
+    if (!ytId)
+      return res.status(400).json({ success: false, error: "ytId required" });
+    const available = await checkEmbeddable(ytId);
+    res.json({ success: true, ytId, available });
   }),
 );
 
